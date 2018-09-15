@@ -13,8 +13,8 @@ Many problems can be reduced to polynomial multiplication problem.
 Most familiar example is the number multiplication.
 Have you ever wondered why are you able to multiply million-digit numbers in Python in seconds?
 
-School algorithm is very simple, but also very slow. It's time complexity is $O(n^2)$ .
-There are much more efficient solutions and we want to explore them in this article.
+School algorithm is very simple, but also very slow. It's time complexity is $O(n^2)$.
+There are much more efficient algorithms and the goal of this article is to explore them.
 
 After formalizing the problem, we'll see Karatsuba algorithm for multiplying polynomials in $O(n^{1.58})$ .
 Next, we'll try to multiply polynomials using polynomial interpolation which will be the base for $O(n \log n)$ algorithm that utilizes Fast Fourirer Transform (FFT).
@@ -26,14 +26,14 @@ In the rest of the article we'll use following ways to note polynomial of degree
 
 $p = p(x) = \sum\limits_{j=0}^n p_jx^j = p_0 + p_1x + p_2x^2 + .. + p_nx^n$
 
-On the input we have two polynomials $a$ and $b$ of the same degree $n$, and the output is a polynomial $c$ of degree $2n$:
+At the input we have two polynomials $a$ and $b$ of same degree $n$, and the output is a polynomial $c$ of degree $2n$:
 
 $c(x) = a(x)b(x) = \sum\limits_{i=0}^n \sum\limits_{j=0}^n a_ib_j x^{i+j}$
 
 School algorithm written in C is simple and unambiguosly illustrates the problem:
 {% highlight c %}
 
-  void mnozi(int* a, int* b, int* c, int n) {
+  void mul(int* a, int* b, int* c, int n) {
     for (int i = 0; i <= 2*n; ++i) {
       c[i] = 0;
     }
@@ -65,7 +65,7 @@ We will solve the problem recursively:
 	* now we have:
 		* $c = z_2x^{2m} + z_1x^m + z_0$
 	* we see that we can compute $z_0, z_1$ and $z_2$ with **four multiplications** of half-sized polynomials, but we can do better
-	* if we compute $z_0$ and $z_2$ directly, it turns out that we can compute $z_1$ as:
+	* if we compute $z_0$ and $z_2$ directly, it turns out that we can compute $z_1$ as follows:
 		* $z_1 = (p + q)(r + s) - pr - qs = (p + q)(r + s) - z_0 - z_2$
 
 One multiplication is compensated by few additions (which are cheap) so now we need only **three multiplications** of half-sized polynomials.
@@ -78,70 +78,81 @@ If you are curious how to compute the complexity of this and similar algorithms 
 
 ## Multiplications using polynomial interpolation
 
-Poznato je da $n+1$ parova $(x_0, y_0), .. , (x_n, y_n)$ takvih da $x_i \neq x_j$ za $i \neq j$ jednoznačno određuju polinom $p$ stupnja $n$ takav da $p(x_i) = y_i$ . Kažemo da iz evaluacija polinoma u $n+1$ točaka možemo rekonstruirati polinom.
+It's known that $n+1$ pairs $(x_0, y_0), .. , (x_n, y_n)$ such that $x_i \neq x_j$ for $i \neq j$ uniquely determine a polynomial $p$ of degree $n$ such that $p(x_i) = y_i$. We say that from evaluations of a polynomial in $n+1$ points we can reconstruct (interpolate) the polynomial. Simplest intuition for this is that a polynomial has $n + 1$ unknown coefficients, and each evaluation is like an equation.
 
-Nama je u problemu množenja polinoma nepoznat polinom $c$ stupnja $2n$ . Ako pronađemo vrijednosti tog polinoma u $2n + 1$ točaka možemo iz njih rekonstruirati cijeli polinom!
-Kako pronaći vrijednost polinoma $c$ u nekoj točki $x$ ? Budući da se radi o umnošku polinoma $a$ i $b$ dovoljno je evaluirati oba polinoma u točki $x$ i pomnožiti dobivene vrijednosti.
+In the polynomial multiplication problem we are looking for the polynomial $c$ of degree $2n$. What if we find values of $c$ in $2n + 1$ points? Then we can reconstruct the whole solution!
 
-Algoritam se dakle sastoji od 3 koraka:
+How to find value of $c$ in a point $x$? As $c$ is the product of $a$ and $b$ it is enough to evaluate both polynomials in $x$ and multiply the results.
 
-	* 1. Izaberi proizvoljno $2n+1$ različitih vrijednosti (točaka) $x_0, .. , x_{2n}$ i evaluiraj polinome $a$ i $b$ u njima.
-	* 2. Pomnoži vrijednosti dobivene za svaku točku: $y_i = a(x_i) * b(x_i)$ .
-	* 3. Interpolacijom izračunaj polinom $c$ iz skupa parova $(x_0, y_0), .. , (x_{2n}, y_{2n})$ .
+Now we are ready to sketch out the high level algorithm in 3 steps:
 
-Sve je to lijepo i krasno, no već prvi korak ne znamo napraviti u složenosti boljoj od $O(n^2)$ .
-Netko je skužio da se evaluacija polinoma u hrpi točaka može napraviti brže ako su točke odabrane prema određenim pravilima. I to nije sve, treći korak se u tom slučaju isto može svesti na evaluaciju polinoma sličnog skupa točaka. Drugi korak je očito linearan, pa ovo zvuči obećavajuće.
-Upoznajmo se najprije s brzim postupkom evaluacije polinoma u takvim točkama.
+1. Choose arbitrarily $2n+1$ different numbers (points) $x_0, .. , x_{2n}$ and evaluate polynomials $a$ and $b$ in them.
+2. Multiply evaluations for each point: $y_i = a(x_i) * b(x_i)$ .
+3. Interpolate $c$ from pairs $(x_0, y_0), .. , (x_{2n}, y_{2n})$ .
+
+This is great, but already first step is difficult to do better than $O(n^2)$.
+Lucky for us, someone smart noticed that evaluation of a polynomial in many points (multipoint evaluation) can be done more efficiently if the chosen set of points satisfies some rules.
+And that's not everything, third step in that case can also be reduced to multipoint evaluation of a similar set of points.
+Second step is clearly linear, so this sounds promising.
+
+Let's see first how to do multipoint evaluation efficiently.
 
 ### Multipoint evaluation
 
-Algoritam koji ćemo u ovom dijelu proučiti uzima polinom $p$ , prirodan broj $N$ i $w$ .
-Algoritam vraća vrijednosti polinoma $p$ u $N$ točaka: $w^0$ , $w^1$ , .. , $w^{N-1}$ .
-Zgodno je vrijednosti dobivene evaluacijom zapisati u obliku polinoma stupnja $N-1$ , tako da vrijednost evaluacije u točki $w^j$ stoji uz $x^j$ . U tom slučaju možemo reći da algoritam vraća novi polinom, i tada govorimo o transformaciji polinoma. **U ostatku ovog članka kad kažemo transformacija mislimo na ovaj algoritam.**
+Algorithm we are going to see takes a polynomial $p$, natural number $N$ and a complex number $w$.
+It returns evaluations of $p$ in $N$ points: $w^0$ , $w^1$ , .. , $w^{N-1}$.
 
-Matematički, transformacija koju radimo je:
+It's convenient to write down these $N$ evaluations in the form of a degree $N-1$ polynomial, so that value of $p$ in $w^j$ stays next to $x^j$.
+In that case, we can say that the algorithm returns a new polynomial, so we can also say the algorithm is a transformation of a polynomial.
+In the rest of the article, when we say **transformation** we mean this algorithm.
+
+Formally, the transformation is:
+
 $T_{N, w}(p) = \sum\limits_{j=0}^{N-1}p(w^j)x^j$
 
-Dodat ćemo još jedan uvjet koji $w$ mora zadovoljavati (ne pitajte zašto, barem ne zasad): $w^N = 1$ . Ako ste upravo pomislili da uvjet nema previše smisla ne zaboravite da se nismo ograničili na realne brojeve kod odabira $w$ .
+With an extra condition: $w^N = 1$ (later we'll see why).
 
-Kako brzo izračunati ovu transformaciju?
-Upoznat ćemo se s varijantom **Cooley-Tukey** algoritma koja brzo izračunava ovu transformaciju kada je $N$ potencija broja $2$ .
-
-Na ulazu su dakle $N=2^k$ , $w$ i polinom $p$ , a na izlazu je transformirani polinom $p' = T_{N, w}(p)$ .
-
-Algoritam je rekurzivan:
-
-	* temeljni slučaj je $N = 1$
-		* $p' = p(w^0) = p(1) = p_0$
-	* inače:
-		* promotrimo neki član rezultata $p'_j$ :
-			* $p'_j = p(w^j) = \sum\limits_{k=0}^{N-1}w^{jk}p_k$
-		* rastavimo ga po parnosti potencija u $p$ , neka je $m = N/2$ :
-			* $p'_j = \sum\limits_{k=0}^{m-1}w^{j2k}p_{2k} + \sum\limits_{k=0}^{m-1}w^{j(2k+1)}p_{2k+1}$
-			* $p'_j = \sum\limits_{k=0}^{m-1}(w^2)^{jk}p_{2k} + w^j\sum\limits_{k=0}^{m-1}(w^2)^{jk}p_{2k+1}$
-		* uvedimo supstitucijske polinome $e$ i $o$ , koji sadrže koeficijente uz parne, odnosno neparne potencije iz $p$ :
-			* $e_j = p_{2j}$
-			* $o_j = p_{2j+1}$
-		* napišimo sada $p'_j$ koristeći $o$ i $e$ :
-			* $p'_j = \sum\limits_{k=0}^{m-1}(w^2)^{jk}e_k + w^j\sum\limits_{k=0}^{m-1}(w^2)^{jk}o_k$
-			* $p'_j = e((w^2)^j) + w^jo((w^2)^j)$
-		* ono što je sada potrebno prepoznati u posljednjem izrazu jesu izrazi za transformaciju polinoma $e$ i $o$ uz kvadrirani $w$
-		* transformirajmo rekurzivno polinome $e$ i $o$ s kvadriranim $w$  (primjetimo $(w^2)^m = 1$ )
-			* $e' = T_{m, w^2}(e)$
-			* $o' = T_{m, w^2}(o)$
-		* ako se sada vratimo na posljednji izraz za $p'$ očito je da za $0 \leq j \lt m$ vrijedi:
-			* $p'_j = e'_j + w^jo'_j$
-		* problem sa $j \ge m$ je što manje polinome $e$ i $o$ pri rekurzivnoj transformaciji nismo evaluirali u točki $(w^2)^j$ , no budući da je $(w^2)^m = 1$ možemo iskoristiti evaluaciju u točki $(w^2)^{j-m}$ tj. $e'_{j-m}$ odnosno $o'_{j-m}$ .
-
-		* dakle:
-			* $p'_j =
-  				\begin{cases}
-    				e'_j + w^jo'_j       & \quad \text{za } 0 \le j \lt m\\
-    				e'_{j-m} + w^jo'_{j-m}  & \quad \text{za } m \le j \lt N \\
-  					\end{cases}$
+How to compute this transformation efficiently?
+We'll use a variant of **Cooley-Tukey** algorithm that computes this transformation when $N$ is a power of 2.
 
 
-Složenost algoritma je $O(N\log N)$ .
+#### Cooley-Tukey algorithm for multipoint evaluation
+
+Input: $N=2^k$, $w$ and polynomial $p$.
+
+Output: transformed polynomial $p\prime = T_{N, w}(p)$ .
+
+Again, we solve recursively:
+* base case is $N = 1$
+	* $p\prime = p(w^0) = p(1) = p_0$
+* otherwise $(N > 1)$:
+	* let's look at one element of the result $p\prime_j$:
+		* $p\prime_j = p(w^j) = \sum\limits_{k=0}^{N-1}w^{jk}p_k$
+	* split on parity of powers in $p$, and let $m = N/2$:
+		* $p\prime_j = \sum\limits_{k=0}^{m-1}w^{j2k}p_{2k} + \sum\limits_{k=0}^{m-1}w^{j(2k+1)}p_{2k+1}$
+		* $p\prime_j = \sum\limits_{k=0}^{m-1}(w^2)^{jk}p_{2k} + w^j\sum\limits_{k=0}^{m-1}(w^2)^{jk}p_{2k+1}$
+	* introduce substitutions $e$ and $o$, for coefficients next to even and odd powers in $p$, respectively:
+		* $e_j = p_{2j}$
+		* $o_j = p_{2j+1}$
+	* write $p\prime_j$ using $e$ i $o$ :
+		* $p\prime_j = \sum\limits_{k=0}^{m-1}(w^2)^{jk}e_k + w^j\sum\limits_{k=0}^{m-1}(w^2)^{jk}o_k$
+		* $p\prime_j = e((w^2)^j) + w^jo((w^2)^j)$
+	* here we have to recognize transformation expressions of polynomials $e$ and $o$ with squared $w$
+	* transform recursively $e$ and $o$ with $w^2$ (note that $(w^2)^m = 1$):
+		* $e\prime = T_{m, w^2}(e)$
+		* $o\prime = T_{m, w^2}(o)$
+	* now it's clear that for $0 \leq j \lt m$:
+		* $p\prime_j = e\prime_j + w^jo\prime_j$
+	* what about $j \ge m$? it might seem impossible because we haven't evaluated $e$ and $o$ in points $(w^2)^j$,
+	but since $(w^2)^m = 1$ we can use evaluations in $(w^2)^{j-m}$, that is, $e\prime_{j-m}$ or $o\prime_{j-m}$.
+	* to summarize:
+		* $p\prime_j =
+ 				\begin{cases}
+   				e\prime_j + w^jo\prime_j          & \quad \text{for } 0 \le j \lt m \\
+   				e\prime_{j-m} + w^jo\prime_{j-m}  & \quad \text{for } m \le j \lt N \\
+				\end{cases}$
+
+Complexity of the algorithm is $O(N\log N)$ .
 
 
 ### Multiplication using Fast Fourier Transform (FFT)
