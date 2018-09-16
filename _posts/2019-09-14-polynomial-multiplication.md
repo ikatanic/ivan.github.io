@@ -9,17 +9,17 @@ categories: jekyll update
 {:toc}
 
 ## Motivation
-Many problems can be reduced to polynomial multiplication problem.
-Most familiar example is the number multiplication.
+Many problems can be reduced to a polynomial multiplication problem.
+The most familiar example is the number multiplication.
 Have you ever wondered why are you able to multiply 100000-digit numbers in Python in seconds?
 
-School algorithm is very simple, but also very slow. It's time complexity is $O(n^2)$.
+School algorithm is very simple, but also very slow. Its time complexity is $O(n^2)$.
 There are much more efficient algorithms and the goal of this article is to explore them.
 
-After formalizing the problem, we'll see Karatsuba algorithm for multiplying polynomials in $O(n^{1.58})$ .
-Next, we'll try to multiply polynomials using polynomial interpolation which will be the base for $O(n \log n)$ algorithms that utilize Fast Fourirer Transform (FFT) and Number Theoretic Transform (NTT).
+After formalizing the problem, we'll see the Karatsuba algorithm for multiplying polynomials in $O(n^{1.58})$.
+Next, we'll try to multiply polynomials using polynomial interpolation which will be the base for $O(n \log n)$ algorithms that utilize Fast Fourier Transform (FFT) and Number Theoretic Transform (NTT).
 
-All these algorithms are [Divide and Conquer](https://en.wikipedia.org/wiki/Divide_and_conquer_algorithms) algorithms, so this article can also serve as an introduction (through examples) with that problem solving approach.
+All these algorithms are [Divide and Conquer](https://en.wikipedia.org/wiki/Divide_and_conquer_algorithms) algorithms, so this article can also serve as an introduction (through examples) with that problem-solving approach.
 
 ## Problem definition
 In the rest of the article we'll use following ways to note polynomial of degree $n$ (all are considered equal):
@@ -30,7 +30,7 @@ At the input we have two polynomials $a$ and $b$ of same degree $n$, and the out
 
 $c(x) = a(x)b(x) = \sum\limits_{i=0}^n \sum\limits_{j=0}^n a_ib_j x^{i+j}$
 
-School algorithm written in C is simple and unambiguosly illustrates the problem:
+School algorithm written in C is simple and unambiguously illustrates the problem:
 {% highlight c %}
 
   void mul(int* a, int* b, int* c, int n) {
@@ -73,16 +73,16 @@ We can multiply those by invoking the algorithm recursively and combine the resu
 
 Time complexity of this algorithm is $O(n^{\log_2 3})$ which is close to, and usually written as, $O(n^{1.58})$.
 
-If you are curious how to compute the complexity of this and similar algorithms in an elegant way, consult the [Master theorem (Wikipedia)](https://en.wikipedia.org/wiki/Master_theorem_(analysis_of_algorithms)).
+If you are curious about how to compute the complexity of this and similar algorithms in an elegant way, consult the [Master theorem (Wikipedia)](https://en.wikipedia.org/wiki/Master_theorem_(analysis_of_algorithms)).
 
 
 ## Multiplications using polynomial interpolation
 
 It's known that $n+1$ pairs $(x_0, y_0), .. , (x_n, y_n)$ such that $x_i \neq x_j$ for $i \neq j$ uniquely determine a polynomial $p$ of degree $n$ such that $p(x_i) = y_i$. We say that from evaluations of a polynomial in $n+1$ points we can reconstruct (interpolate) the polynomial. Simplest intuition for this is that a polynomial has $n + 1$ unknown coefficients, and each evaluation is like an equation.
 
-In the polynomial multiplication problem we are looking for the polynomial $c$ of degree $2n$. What if we find values of $c$ in $2n + 1$ points? Then we can reconstruct the solution!
+In the polynomial multiplication problem, we are looking for the polynomial $c$ of degree $2n$. What if we find values of $c$ in $2n + 1$ points? Then we can reconstruct the solution!
 
-How to find value of $c$ in a point $x$? As $c$ is the product of $a$ and $b$ it is enough to evaluate both polynomials in $x$ and multiply the results.
+How to find the value of $c$ in a point $x$? As $c$ is the product of $a$ and $b$ it is enough to evaluate both polynomials in $x$ and multiply the results.
 
 Now we are ready to sketch out the high level 3-step algorithm:
 
@@ -90,16 +90,16 @@ Now we are ready to sketch out the high level 3-step algorithm:
 2. Multiply evaluations for each point: $y_i = a(x_i) b(x_i)$,
 3. Interpolate $c$ from pairs $(x_0, y_0), .. , (x_{2n}, y_{2n})$.
 
-This is great, but already first step is difficult to do better than $O(n^2)$.
+This is great, but already the first step is difficult to do better than $O(n^2)$.
 Lucky for us, someone smart noticed that evaluation of a polynomial in many points (multipoint evaluation) can be done more efficiently if the chosen set of points satisfies few rules.
-And that's not everything, third step in that case can also be reduced to multipoint evaluation of a similar set of points.
-Second step is clearly linear, so this sounds promising.
+And that's not everything, the third step, in that case, can also be reduced to the multipoint evaluation of a similar set of points.
+The second step is clearly linear, so this sounds promising.
 
 Let's first see how to do multipoint evaluation efficiently.
 
 ### Multipoint evaluation
 
-Algorithm we are going to see takes a polynomial $p$, a natural number $N$ and a complex number $w$.
+The algorithm we are going to see takes a polynomial $p$, a natural number $N$ and a complex number $w$.
 It returns evaluations of $p$ in $N$ points: $w^0, w^1,.. , w^{N-1}$.
 
 It's convenient to write down these $N$ evaluations in the form of a degree $N-1$ polynomial, so that value of $p$ in $w^j$ stays next to $x^j$.
@@ -153,7 +153,7 @@ Again, we solve recursively:
    				e\prime_{j-m} + w^jo\prime_{j-m}  & \quad \text{for } m \le j \lt N \\
 				\end{cases}$$
 
-Complexity of this multipoint evaluation algorithm is $O(N\log N)$ .
+The complexity of this multipoint evaluation algorithm is $O(N\log N)$.
 
 Cool, we can evaluate efficiently. But what about the interpolation?
 We can look at the interpolation as an inverse of our transformation.
@@ -161,11 +161,11 @@ It turns out it is the same as the transformation with inverted $w$ and divided 
 
 $$T^{-1}_{N, w}(p\prime) = \frac{1}{N} T_{N, w^{-1}}(p\prime) = \frac{1}{N} \sum\limits_{j=0}^{N-1}p\prime(w^{-j})x^j$$
 
-Proof will be left as an exercise to the reader :).
+The proof will be left as an exercise to the reader :).
 
 So basically we can use the same multipoint evaluation algorithm to do the interpolation too!
 
-Only thing we are missing is a value of $w$..
+The only thing we are missing is a value of $w$...
 
 ### Multiplication using Fast Fourier Transform (FFT)
 
@@ -183,15 +183,15 @@ where:
 * $DFT^{-1}(p) = \frac{1}{N} T_{N, e^{-i2\pi /N}}(p)$,
 * $.$ - element-wise multiplication of polynomials, that is: $(r.s)_i = r_is_i$.
 
-This and all other fast implementation of DFT are called Fast Fourier Transformations (FFTs).
+This and all other fast implementation of DFT are called Fast Fourier Transformations (FFT)	.
 
-Complexity of this polynomial multiplication algorithm is  $O(n \log n)$.
+The complexity of this polynomial multiplication algorithm is  $O(n \log n)$.
 
 ### Multiplication using Number Theoretic Transform (NTT)
 
-Disadvantage of DFT in the context of implementation can be the fact that it uses real numbers.
+A disadvantage of DFT in the context of implementation can be the fact that it uses real numbers.
 If we work with polynomials over finite fields we may go around it using Number Theoretic Transform (NTT).
-Let's say we are working with finite field $GP(p)$, that is, all the operations on numbers are done modulo $p$, where $p$ is prime.
+Let's say we are working with a finite field $GP(p)$, that is, all the operations on numbers are done modulo $p$, where $p$ is prime.
 
 Similarly to DFT, the product of polynomials $a$ and $b$ of degree $n$ can we written as:
 
@@ -215,7 +215,7 @@ Details are out of the scope of this article, but feel free to experiment.
 
 
 ## Conclusion
-We started with the polynomial multiplication problem but we also learned how to do FFT efficiently. FFT on the other hand is used everywhere (signal processing for example).
+We started with the polynomial multiplication problem but we also learned how to do FFT efficiently. FFT, on the other hand, is used everywhere (signal processing for example).
 
 FFT/NTT-based multiplications are definitely a better choice than Karatsuba when talking about speed, but FFT can have
 precision problems while NTT might not be applicable.
@@ -226,11 +226,11 @@ Another random benefit of Karatsuba algorithm is that it can be used even if the
 If we are constrained by sizes of integer data types, we can do the multiplication modulo few different primes. They can be small, but their product must be larger
 than any value in our result. The results can then be combined into non-modulo result using [Chinese Remained Theorem](https://en.wikipedia.org/wiki/Chinese_remainder_theorem).
 
-2. When implementing Cooley-Tukey to do FFT be aware of the form of $w$ and compute it's powers using [De Moivre's formula](https://en.wikipedia.org/wiki/De_Moivre%27s_formula).
+2. When implementing Cooley-Tukey to do FFT be aware of the form of $w$ and compute its powers using [De Moivre's formula](https://en.wikipedia.org/wiki/De_Moivre%27s_formula).
 
 3. To combat FFTs precision issues with big numbers we can split the polynomial's coefficients into few smaller values. For example
 each coefficient $a_i$ can be expressed as $a_i = x_iK + y_i$. Where $K$ is some constant, for example $K = \sqrt{max(a_i)}$.
-If we do similar split for other polynomial, we can express the product as a weighted sum of 4 smaller (in terms of values) products.
+If we do a similar split for the other polynomial, we can express the product as a weighted sum of 4 smaller (in terms of values) products.
 
 ## Test your understanding
 This article was originally written as a competitive programming tutorial. So naturally, I've collected a few problems available online, ranging from ones where you just have to implement one of the algorithms, to ones where you have to modify the algorithms to adapt them to a new situation:
