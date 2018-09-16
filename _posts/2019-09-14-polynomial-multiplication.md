@@ -11,13 +11,13 @@ categories: jekyll update
 ## Motivation
 Many problems can be reduced to polynomial multiplication problem.
 Most familiar example is the number multiplication.
-Have you ever wondered why are you able to multiply million-digit numbers in Python in seconds?
+Have you ever wondered why are you able to multiply 100000-digit numbers in Python in seconds?
 
 School algorithm is very simple, but also very slow. It's time complexity is $O(n^2)$.
 There are much more efficient algorithms and the goal of this article is to explore them.
 
 After formalizing the problem, we'll see Karatsuba algorithm for multiplying polynomials in $O(n^{1.58})$ .
-Next, we'll try to multiply polynomials using polynomial interpolation which will be the base for $O(n \log n)$ algorithm that utilizes Fast Fourirer Transform (FFT).
+Next, we'll try to multiply polynomials using polynomial interpolation which will be the base for $O(n \log n)$ algorithms that utilize Fast Fourirer Transform (FFT) and Number Theoretic Transform (NTT).
 
 All these algorithms are [Divide and Conquer](https://en.wikipedia.org/wiki/Divide_and_conquer_algorithms) algorithms, so this article can also serve as an introduction (through examples) with that problem solving approach.
 
@@ -80,30 +80,31 @@ If you are curious how to compute the complexity of this and similar algorithms 
 
 It's known that $n+1$ pairs $(x_0, y_0), .. , (x_n, y_n)$ such that $x_i \neq x_j$ for $i \neq j$ uniquely determine a polynomial $p$ of degree $n$ such that $p(x_i) = y_i$. We say that from evaluations of a polynomial in $n+1$ points we can reconstruct (interpolate) the polynomial. Simplest intuition for this is that a polynomial has $n + 1$ unknown coefficients, and each evaluation is like an equation.
 
-In the polynomial multiplication problem we are looking for the polynomial $c$ of degree $2n$. What if we find values of $c$ in $2n + 1$ points? Then we can reconstruct the whole solution!
+In the polynomial multiplication problem we are looking for the polynomial $c$ of degree $2n$. What if we find values of $c$ in $2n + 1$ points? Then we can reconstruct the solution!
 
 How to find value of $c$ in a point $x$? As $c$ is the product of $a$ and $b$ it is enough to evaluate both polynomials in $x$ and multiply the results.
 
-Now we are ready to sketch out the high level algorithm in 3 steps:
+Now we are ready to sketch out the high level 3-step algorithm:
 
-1. Choose arbitrarily $2n+1$ different numbers (points) $x_0, .. , x_{2n}$ and evaluate polynomials $a$ and $b$ in them.
-2. Multiply evaluations for each point: $y_i = a(x_i) * b(x_i)$ .
-3. Interpolate $c$ from pairs $(x_0, y_0), .. , (x_{2n}, y_{2n})$ .
+1. Choose some $2n+1$ different numbers (points) $x_0, .. , x_{2n}$ and evaluate polynomials $a$ and $b$ in them,
+2. Multiply evaluations for each point: $y_i = a(x_i) b(x_i)$,
+3. Interpolate $c$ from pairs $(x_0, y_0), .. , (x_{2n}, y_{2n})$.
 
 This is great, but already first step is difficult to do better than $O(n^2)$.
-Lucky for us, someone smart noticed that evaluation of a polynomial in many points (multipoint evaluation) can be done more efficiently if the chosen set of points satisfies some rules.
+Lucky for us, someone smart noticed that evaluation of a polynomial in many points (multipoint evaluation) can be done more efficiently if the chosen set of points satisfies few rules.
 And that's not everything, third step in that case can also be reduced to multipoint evaluation of a similar set of points.
 Second step is clearly linear, so this sounds promising.
 
-Let's see first how to do multipoint evaluation efficiently.
+Let's first see how to do multipoint evaluation efficiently.
 
 ### Multipoint evaluation
 
-Algorithm we are going to see takes a polynomial $p$, natural number $N$ and a complex number $w$.
-It returns evaluations of $p$ in $N$ points: $w^0$ , $w^1$ , .. , $w^{N-1}$.
+Algorithm we are going to see takes a polynomial $p$, a natural number $N$ and a complex number $w$.
+It returns evaluations of $p$ in $N$ points: $w^0, w^1,.. , w^{N-1}$.
 
 It's convenient to write down these $N$ evaluations in the form of a degree $N-1$ polynomial, so that value of $p$ in $w^j$ stays next to $x^j$.
-In that case, we can say that the algorithm returns a new polynomial, so we can also say the algorithm is a transformation of a polynomial.
+In that case, we can say that the algorithm returns a new polynomial, so we can also say the algorithm is a polynomial transformation.
+It takes a polynomial, it returns a polynomial.
 In the rest of the article, when we say **transformation** we mean this algorithm.
 
 Formally, the transformation is:
@@ -134,11 +135,11 @@ Again, we solve recursively:
 	* introduce substitutions $e$ and $o$, for coefficients next to even and odd powers in $p$, respectively:
 		* $e_j = p_{2j}$
 		* $o_j = p_{2j+1}$
-	* write $p\prime_j$ using $e$ i $o$ :
+	* express $p\prime_j$ using $e$ i $o$ :
 		* $p\prime_j = \sum\limits_{k=0}^{m-1}(w^2)^{jk}e_k + w^j\sum\limits_{k=0}^{m-1}(w^2)^{jk}o_k$
 		* $p\prime_j = e((w^2)^j) + w^jo((w^2)^j)$
 	* here we have to recognize transformation expressions of polynomials $e$ and $o$ with squared $w$
-	* transform recursively $e$ and $o$ with $w^2$ (note that $(w^2)^m = 1$):
+	* transform recursively $e$ and $o$ with $w^2$ (note that $(w^2)^m = 1$ so we are allowed to do it):
 		* $e\prime = T_{m, w^2}(e)$
 		* $o\prime = T_{m, w^2}(o)$
 	* now it's clear that for $0 \leq j \lt m$:
@@ -146,76 +147,97 @@ Again, we solve recursively:
 	* what about $j \ge m$? it might seem impossible because we haven't evaluated $e$ and $o$ in points $(w^2)^j$,
 	but since $(w^2)^m = 1$ we can use evaluations in $(w^2)^{j-m}$, that is, $e\prime_{j-m}$ or $o\prime_{j-m}$.
 	* to summarize:
-		* $p\prime_j =
+		* $$p\prime_j =
  				\begin{cases}
    				e\prime_j + w^jo\prime_j          & \quad \text{for } 0 \le j \lt m \\
    				e\prime_{j-m} + w^jo\prime_{j-m}  & \quad \text{for } m \le j \lt N \\
-				\end{cases}$
+				\end{cases}$$
 
-Complexity of the algorithm is $O(N\log N)$ .
+Complexity of this multipoint evaluation algorithm is $O(N\log N)$ .
 
+Cool, we can evaluate efficiently. But what about the interpolation?
+We can look at the interpolation as an inverse of our transformation.
+It turns out it is the same as the transformation with inverted $w$ and divided by $N$:
+
+$$T^{-1}_{N, w}(p\prime) = \frac{1}{N} T_{N, w^{-1}}(p\prime) = \frac{1}{N} \sum\limits_{j=0}^{N-1}p\prime(w^{-j})x^j$$
+
+Proof will be left as an exercise to the reader :).
+
+So basically we can use the same multipoint evaluation algorithm to do the interpolation too!
+
+Only thing we are missing is a value of $w$..
 
 ### Multiplication using Fast Fourier Transform (FFT)
 
-Ovaj algoritam nam kaže da umnožak polinoma $a$ i $b$ možemo zapisati kao:
-$c = ab = DFT^{-1}(DFT(a).DFT(b))$
+Let's use $w = e^{i2\pi /N}$.
 
-gdje je :
+In that case, our transform is also known as the Discrete Fourier Transform (DFT).
 
-	* $N = 2n + 1$ ,
-	* $DFT(p) = T_{N, e^{i2\pi /N}}(p)$ ,
-	* $DFT^{-1}(p) = \frac{1}{N} T_{N, e^{-i2\pi /N}}(p)$ ,
-	* $.$ - binarna operacija nad polinomima, "množenje i-tog člana s i-tim": $(r.s)_i = r_is_i$ .
+If we now go back to the original multiplication problem, we can summarize the complete algorithm as follows:
 
+$$c = ab = DFT^{-1}(DFT(a).DFT(b))$$
 
-Primjetite sličnosti s već spomenutim množenjem polinoma uporabom interpolacije.
+where:
+* $N = $ smallest power of two greater than $2n$,
+* $DFT(p) = T_{N, e^{i2\pi /N}}(p)$,
+* $DFT^{-1}(p) = \frac{1}{N} T_{N, e^{-i2\pi /N}}(p)$,
+* $.$ - element-wise multiplication of polynomials, that is: $(r.s)_i = r_is_i$.
 
+This and all other fast implementation of DFT are called Fast Fourier Transformations (FFTs).
 
-Primjetite i da su vrijednosti $w$ ovdje kompleksni brojevi te da vrijedi $w^N = 1$ .
-Možemo primjeniti algoritam iz prethodnog poglavlja za brzo izračunavanje $DFT$ transformacije.
-Činjenica da transformaciju znamo brzo izračunati samo za slučajeve kad je $N$ potencija broja 2 ne predstavlja veliki problem, dovoljno je za $N$ uzeti prvu sljedeću potenciju broja 2 koja nije manja od $2n+1$ .
-Sve ovakve i slične brze implementacije DFT-a nazivaju se zajedničkim imenom brze Fourieove transformacije (FFT).
-
-Valja napomenuti da pri implementaciji ovog algoritma i transformacije treba biti svjestan oblika broja $w$ i ne računati direktno njegove potencije (kako bi se očuvala preciznost) već koristiti Eulerov identitet koji kaže da za bilo koji realan $x$ vrijedi:
-$e^{ix} = \cos x + i \sin x$ .
-
-Složenost ovog algoritma množenja polinoma je $O(n \log n)$ .
+Complexity of this polynomial multiplication algorithm is  $O(n \log n)$.
 
 ### Multiplication using Number Theoretic Transform (NTT)
 
-Nedostatak DFT-a je (barem za nas) to što koristi realne odnosno kompleksne brojeve.
-Ako radimo s polinomima nad konačnim poljima to ponekad možemo izbjeći. Pretpostavimo da radimo s konačnim poljem $GF(p)$ tj. sve operacije nad brojevima provodimo modulo $p$ gdje je $p$ prost broj.
+Disadvantage of DFT in the context of implementation can be the fact that it uses real numbers.
+If we work with polynomials over finite fields we may go around it using Number Theoretic Transform (NTT).
+Let's say we are working with finite field $GP(p)$, that is, all the operations on numbers are done modulo $p$, where $p$ is prime.
 
-Analogno DFT-u, umnožak polinoma $a$ i $b$ stupnja $n$ možemo pisati kao:
-$c = ab = NTT^{-1}(NTT(a).NTT(b))$
+Similarly to DFT, the product of polynomials $a$ and $b$ of degree $n$ can we written as:
 
-gdje je :
+$$c = ab = NTT^{-1}(NTT(a).NTT(b))$$
 
-	* $N$ - najmanji djelitelj od $p-1$ koji nije manji od $2n+1$ ,
-	* $g$ - bilo koji primitivni korijen modulo $p$  ([[https://en.wikipedia.org/wiki/Primitive_root_modulo_n|Što je primitivni korijen i kako ga pronaći?]]),
-	* $NTT(p) = T_{N, g^{(p-1)/N}}(p)$ ,
-	* $NTT^{-1}(p) = \frac{1}{N} T_{N, g^{-(p-1)/N}}(p)$ ,
-	* $.$ - binarna operacija nad polinomima, "množenje i-tog člana s i-tim": $(r.s)_i = r_is_i$ .
+where:
+* $N = $ smallest divisor of $p-1$ that is greater than $2n$,
+* $g = $ a primitive root modulo $p$  [What is primitive root and how to find one?](https://en.wikipedia.org/wiki/Primitive_root_modulo_n)
+* $NTT(p) = T_{N, g^{(p-1)/N}}(p)$,
+* $NTT^{-1}(p) = \frac{1}{N} T_{N, g^{-(p-1)/N}}(p)$,
+* $.$ - element-wise multiplication of polynomials, that is: $(r.s)_i = r_is_i$.
 
-Za izračunavanje transformacije možemo iskoristiti već opisani algoritam, s tim da sve operacije provodimo modulo $p$ . Primjetite da smo sada dobili dodatan uvjet za $N$ , on mora biti djelitelj od $p-1$ . Uz stare zahtjeve da $N$ nije manji od $2n+1$ te da mora biti potencija broja 2, pronalaženje pravog $N$ može postati nemoguće. To je upravo i glavna mana NTT-a, jer je sada jedini slučaj gdje ga možemo iskoristiti slučaj kada je $p$ prost broj oblika $k2^n + 1$ .
-Zapravo, moguće je i češće, ali to zahtjeva modificiranje opisanog algoritma za izračunavanje transformacije, glavna ideja ostaje ista ali ulazni niz ne rastavljamo konstantno na dva jednaka dijela. Oni koje to više zanima neka slobodno eksperimentiraju.
+Note that $g^{(p-1)/N}$ has similar properties as our old friend $w$. So we can simply use the
+same transformation algorithm as before, the main difference being that all the computations will be done using integers and modulo $p$.
+
+There is a catch though. $N$ must divide $p-1$, and with the old requirement of $N$ being a power of two, finding an appropriate $N$ can become impossible.
+To summarize, to apply this algorithm, $p$ must be a prime of form $k2^l + 1$.
+
+However, it is sometimes possible to modify the Cooley-Tukey to support other values of $p$, by not always splitting the problem into two equal parts.
+Details are out of the scope of this article, but feel free to experiment.
 
 
 ## Conclusion
+We started with the polynomial multiplication problem but we also learned how to do FFT efficiently. FFT on the other hand is used everywhere (signal processing for example).
 
-Pošli smo od problema množenja polinoma, no treba napomenuti da se FFT koristi ponajviše u računalnom procesiranju raznih signala (slike, zvuka..).
-Kad govorimo o množenju polinoma, klasična primjena je množenje velikih brojeva (zapisujemo ih kao polinome u bazi 10 ili nekoj većoj/manjoj bazi).
+FFT/NTT-based multiplications are definitely a better choice than Karatsuba when talking about speed, but FFT can have
+precision problems while NTT might not be applicable.
+Another random benefit of Karatsuba algorithm is that it can be used even if the division is not defined (modulo 24, for example).
 
-FFT je svakako bolji izbor od Karatsubinog algoritma kad govorimo o brzini, no nedostatak mu je preciznost jer smo primorani koristiti realni tip podatka pri implementaciji.
-Uz preciznost, prednost Karatsubinog algoritma je i mogućnost množenja polinoma čak i kad dijeljenje nije definirano (npr. modulo 24).
+## Few practical tips
+1. NTT-based multiplication can be used even if we don't want the result modulo prime $p$. It is sufficient to use any $p$ larger than any value in our result.
+If we are constrained by sizes of integer data types, we can do the multiplication modulo few different primes. They can be small, but their product must be larger
+than any value in our result. The results can then be combined into non-modulo result using [Chinese Remained Theorem](https://en.wikipedia.org/wiki/Chinese_remainder_theorem).
 
+2. When implementing Cooley-Tukey to do FFT be aware of the form of $w$ and compute it's powers using [De Moivre's formula](https://en.wikipedia.org/wiki/De_Moivre%27s_formula).
 
-Trebamo napomenuti da se NTT može iskoristiti čak i kad ne želimo eksplicitno rezultat modulo prost $p$ . Dovoljno je uzeti $p$ veći od najveće vrijednosti članova rezultantnog polinoma i pokrenuti algoritam. Nekad to nije praktično jer smo obično ograničeni 32-bitnim ili 64-bitnim cjelobrojnim tipom podatka. Tada možemo nekoliko puta izvršiti množenje, svaki puta modulo različit prost broj $p$ . Odabrani prosti brojevi mogu biti proizvoljno mali ali njihov umnožak $u$ mora biti veći od najveće vrijednosti članova rezultatntnog polinoma. Vrijednost člana rezultata modulo $u$  (tj. pravu vrijednost rezultata) možemo zatim izračunati koristeći Kineski teorem o ostacima (CRT).
+3. To combat FFTs precision issues with big numbers we can split the polynomial's coefficients into few smaller values. For example
+each coefficient $a_i$ can be expressed as $a_i = x_iK + y_i$. Where $K$ is some constant, for example $K = \sqrt{max(a_i)}$.
+If we do similar split for other polynomial, we can express the product as a weighted sum of 4 smaller (in terms of values) products.
 
 ## Test your understanding
+This article was originally written as a competitive programming tutorial. So naturally, I've collected a few problems available online, ranging from ones where you just have to implement one of the algorithms, to ones where you have to modify the algorithms to adapt them to a new situation:
 
-http://www.spoj.com/problems/VFMUL/
-http://www.spoj.com/problems/LPRIME/
-http://www.spoj.com/problems/MAXMATCH/
-http://codeforces.com/gym/100524 (problem D)
-http://icpc.baylor.edu/download/worldfinals/problems/icpc2015.pdf (problem J)
+* [SPOJ VFMUL](http://www.spoj.com/problems/VFMUL/)
+* [SPOJ LPRIME](http://www.spoj.com/problems/LPRIME/)
+* [SPOJ MAXMATCH](http://www.spoj.com/problems/MAXMATCH/)
+* [AGC 5 - problem F](https://agc005.contest.atcoder.jp/tasks/agc005_f)
+* [ICPC World Finals 2015 - problem J](http://icpc.baylor.edu/download/worldfinals/problems/icpc2015.pdf)
+* [ASC 46 - problem D](http://codeforces.com/gym/100524)
