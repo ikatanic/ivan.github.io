@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "How to efficiently multiply polynomials"
+title:  "Fast polynomial multiplication"
 date:   2018-09-13 08:58:09 +0100
 categories: jekyll update
 ---
@@ -52,11 +52,12 @@ School algorithm written in C is simple and unambiguously illustrates the proble
 We will solve the problem recursively:
 * base case is $n = 0$, then simply $c = a_0b_0$
 * otherwise ($n > 0$):
-	* split the input polynomials into halves of (almost) equal sizes:
-		* $m = \lfloor n/2 \rfloor$
+	* split each of the input polynomials into two smaller polynomials:
+		* $m = \lceil n/2 \rceil$
 		* $a = px^m + q$
 		* $b = rx^m + s$
-	* write $c$ using new smaller polynomials $p, q, r, s$:
+		* for example if $a = x^3 - 2x^2 + x + 4$, then $m=2$, $q=x + 4$ and $p=x - 2$
+	* write $c$ using new polynomials $p, q, r, s$:
 		* $c = ab = (px^m + q)(rx^m + s) = prx^{2m} + (ps + qr)x^m + qs$
 	* introduce simple substitutions:
 		* $z_2 = pr$
@@ -119,7 +120,7 @@ We'll use a variant of **Cooley-Tukey** algorithm that computes this transformat
 
 #### Cooley-Tukey algorithm for multipoint evaluation
 
-Input: $N=2^k$, $w$ and polynomial $p$.
+Input: $N=2^q$, $w$ and polynomial $p$.
 
 Output: transformed polynomial $p\prime = T_{N, w}(p)$ .
 
@@ -161,7 +162,7 @@ It turns out it is the same as the transformation with inverted $w$ and divided 
 
 $$T^{-1}_{N, w}(p\prime) = \frac{1}{N} T_{N, w^{-1}}(p\prime) = \frac{1}{N} \sum\limits_{j=0}^{N-1}p\prime(w^{-j})x^j$$
 
-The proof will be left as an exercise to the reader :).
+The proof is left as an exercise to the reader :).
 
 So basically we can use the same multipoint evaluation algorithm to do the interpolation too!
 
@@ -208,18 +209,18 @@ Note that $g^{(p-1)/N}$ has similar properties as our old friend $w$. So we can 
 same transformation algorithm as before, the main difference being that all the computations will be done using integers and modulo $p$.
 
 There is a catch though. $N$ must divide $p-1$, and with the old requirement of $N$ being a power of two, finding an appropriate $N$ can become impossible.
-To summarize, to apply this algorithm, $p$ must be a prime of form $k2^l + 1$.
+To summarize, to apply this algorithm, $p$ must be a prime of form $k2^q + 1$.
 
 However, it is sometimes possible to modify the Cooley-Tukey to support other values of $p$, by not always splitting the problem into two equal parts.
 Details are out of the scope of this article, but feel free to experiment.
 
 
 ## Conclusion
-We started with the polynomial multiplication problem but we also learned how to do FFT efficiently. FFT, on the other hand, is used everywhere (signal processing for example).
+We started with the polynomial multiplication problem but we also learned how to do FFT efficiently. FFT, on the other hand, is used everywhere (signal processing for example). Few big-integer libraries still use the Karatsuba algorithm, while others have opted for FFT or even more fancier algorithms.
 
 FFT/NTT-based multiplications are definitely a better choice than Karatsuba when talking about speed, but FFT can have
 precision problems while NTT might not be applicable.
-Another random benefit of Karatsuba algorithm is that it can be used even if the division is not defined (modulo 24, for example).
+Another random benefit of the Karatsuba algorithm is that it can be used even if the division is not defined (modulo 24, for example).
 
 ## Few practical tips
 1. NTT-based multiplication can be used even if we don't want the result modulo prime $p$. It is sufficient to use any $p$ larger than any value in our result.
@@ -232,8 +233,10 @@ than any value in our result. The results can then be combined into non-modulo r
 each coefficient $a_i$ can be expressed as $a_i = x_iK + y_i$. Where $K$ is some constant, for example $K = \sqrt{max(a_i)}$.
 If we do a similar split for the other polynomial, we can express the product as a weighted sum of 4 smaller (in terms of values) products.
 
+4. Karatsuba algorithm will be faster than more sophisticated algorithms on smaller polynomials as it has a relatively low constant factor. Similarly, school algorithm, having the lowest constant factor, will be the fastest for very small polynomials. So for the best performance, all the approaches are combined.
+
 ## Test your understanding
-This article was originally written as a competitive programming tutorial. So naturally, I've collected a few problems available online, ranging from ones where you just have to implement one of the algorithms, to ones where you have to modify the algorithms to adapt them to a new situation:
+This article was originally written as a competitive programming tutorial. So naturally, I've collected a few problems available online, ranging from ones where you just have to implement one of the algorithms, to ones where you have to modify the algorithms and adapt them to a new situation:
 
 * [SPOJ VFMUL](http://www.spoj.com/problems/VFMUL/)
 * [SPOJ LPRIME](http://www.spoj.com/problems/LPRIME/)
