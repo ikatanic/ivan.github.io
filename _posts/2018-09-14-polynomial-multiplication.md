@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Fast polynomial multiplication"
-date:   2018-09-13 08:58:09 +0100
+date:   2018-09-22 08:58:09 +0100
 categories: jekyll update
 ---
 
