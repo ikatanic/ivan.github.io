@@ -16,7 +16,7 @@
 title: Ivan Katanić
 email: ivan.katanic@gmail.com
 description: >- # this means to ignore newlines until "baseurl:"
-  
+
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 # twitter_username: ikatanic
@@ -24,6 +24,9 @@ github_username:  ikatanic
 
 # Google Analytics
 google_analytics: UA-126269651-1
+
+# Blog
+permalink: :year/:month/:day/:title/
 
 # Build settings
 markdown: kramdown
