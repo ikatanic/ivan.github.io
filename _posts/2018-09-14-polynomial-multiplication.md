@@ -11,12 +11,12 @@ categories: cp math algorithms
 ## Motivation
 Many computer science problems can be reduced to a polynomial multiplication.
 The most familiar example is the integer multiplication.
-Have you ever wondered why multiplying 100000-digit numbers in Python takes seconds and not minutes?
+Have you ever wondered why multiplying 100000-digit numbers in Python takes seconds and not minutes or hours?
 
 The school algorithm is very simple, but also very slow. Its time complexity is $O(n^2)$.
 There are much more efficient algorithms and the goal of this article is to explore some of them.
 
-After formalizing the problem, we'll have a look the Karatsuba algorithm for multiplying polynomials in $O(n^{1.58})$ time.
+After formalizing the problem, we'll have a look at the Karatsuba algorithm for multiplying polynomials in $O(n^{1.58})$ time.
 Next, we'll try to multiply polynomials using polynomial interpolation which will be the basis of $O(n \log n)$ algorithms that utilize Fast Fourier Transform (FFT) and Number Theoretic Transform (NTT).
 
 All these algorithms use the [Divide and Conquer](https://en.wikipedia.org/wiki/Divide_and_conquer_algorithms) paradigm, so this article can also serve as an advanced introduction (through examples) to that problem-solving approach.
@@ -33,7 +33,7 @@ $$c(x) = a(x)b(x) = \sum\limits_{i=0}^n \sum\limits_{j=0}^n a_ib_j x^{i+j}$$
 The school algorithm written in C is simple and unambiguously illustrates the problem:
 {% highlight c %}
 
-  void mul(int* a, int* b, int* c, int n) {
+  void mul(const int* a, const int* b, int* c, int n) {
     for (int i = 0; i <= 2*n; ++i) {
       c[i] = 0;
     }
